@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Quote Glass</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0A1128 0%, #1C2541 50%, #0B132B 100%);
+    color: #F5F5F7;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 2px;
+    margin: 10px 0 25px;
+    text-transform: uppercase;
+    opacity: 0.9;
+  }
+  .card {
+    width: 100%;
+    max-width: 340px;
+    min-height: 280px;
+    background: rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    border-radius: 24px;
+    padding: 30px 25px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    transition: transform 0.4s ease, background 0.5s ease, border-color 0.5s ease;
+  }
+  .card.flip { transform: scale(0.96); opacity: 0.7; }
+  .quote {
+    font-size: 20px;
+    line-height: 1.5;
+    font-weight: 300;
+    color: #F5F5F7;
+    margin-bottom: 15px;
+  }
+  .author {
+    font-size: 13px;
+    opacity: 0.6;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 25px;
+    justify-content: center;
+    width: 100%;
+    max-width: 340px;
+  }
+  button {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 140px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.2s;
+  }
+  button:active { transform: scale(0.96); }
+  .btn-primary {
+    background: #BB86FC;
+    color: #121212;
+  }
+  .btn-ghost {
+    background: rgba(255, 255, 255, 0.10);
+    color: #F5F5F7;
+    border: 1px solid rgba(255, 255, 255, 0.20);
+  }
+  .history {
+    width: 100%;
+    max-width: 340px;
+    margin-top: 30px;
+  }
+  .history h2 {
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 12px;
+  }
+  .history-item {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 14px;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .history-item span { flex: 1; }
+  .del-btn {
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    border: none;
+    font-size: 18px;
+    padding: 0 5px;
+    flex: 0 0 auto;
+    min-width: auto;
+  }
+  .empty { opacity: 0.4; font-size: 13px; font-style: italic; }
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(187, 134, 252, 0.95);
+    color: #121212;
+    padding: 12px 22px;
+    border-radius: 30px;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <h1>Quote Glass</h1>
+
+  <div class="card" id="card">
+    <div class="quote" id="quote">Нажми кнопку, чтобы получить вдохновение</div>
+    <div class="author" id="author">—</div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" onclick="newQuote()">Новая цитата</button>
+    <button class="btn-ghost" onclick="saveImage()">Сохранить PNG</button>
+    <button class="btn-ghost" onclick="shareCard()">Поделиться</button>
+    <button class="btn-ghost" onclick="saveToFav()">В избранное</button>
+  </div>
+
+  <div class="history">
+    <h2>Избранное</h2>
+    <div id="historyList"></div>
+  </div>
+
+  <div class="toast" id="toast">Готово</div>
+
+<script>
+  const quotes = [
+    { t: "Будь изменением, которое хочешь увидеть в мире.", a: "Махатма Ганди", cat: "wis" },
+    { t: "Единственный способ делать великие дела — любить то, что делаешь.", a: "Стив Джобс", cat: "mot" },
+    { t: "Не бойся идти медленно, бойся стоять на месте.", a: "Китайская мудрость", cat: "cal" },
+    { t: "Ты сильнее, чем думаешь.", a: "Неизвестный автор", cat: "str" },
+    { t: "Мечтай так, будто будешь жить вечно.", a: "Джеймс Дин", cat: "lov" },
+    { t: "Каждый день — это шанс начать заново.", a: "Неизвестный автор", cat: "cal" },
+    { t: "Простота — высшая форма утончённости.", a: "Леонардо да Винчи", cat: "wis" },
+    { t: "Твой единственный предел — ты сам.", a: "Неизвестный автор", cat: "str" }
+  ];
+
+  const colors = {
+    mot: { bg: 'rgba(187, 134, 252, 0.15)', bd: 'rgba(187, 134, 252, 0.35)' },
+    wis: { bg: 'rgba(100, 180, 255, 0.15)', bd: 'rgba(100, 180, 255, 0.35)' },
+    cal: { bg: 'rgba(130, 220, 200, 0.15)', bd: 'rgba(130, 220, 200, 0.35)' },
+    lov: { bg: 'rgba(255, 150, 180, 0.15)', bd: 'rgba(255, 150, 180, 0.35)' },
+    str: { bg: 'rgba(255, 210, 120, 0.15)', bd: 'rgba(255, 210, 120, 0.35)' }
+  };
+
+  let current = null;
+
+  function newQuote() {
+    const card = document.getElementById('card');
+    card.classList.add('flip');
+    setTimeout(() => {
+      current = quotes[Math.floor(Math.random() * quotes.length)];
+      document.getElementById('quote').textContent = `«${current.t}»`;
+      document.getElementById('author').textContent = `— ${current.a}`;
+      const c = colors[current.cat] || colors.mot;
+      card.style.background = c.bg;
+      card.style.borderColor = c.bd;
+      card.classList.remove('flip');
+    }, 200);
+  }
+
+  function saveImage() {
+    const card = document.getElementById('card');
+    html2canvas(card, { backgroundColor: null, scale: 2 }).then(canvas => {
+      const link = document.createElement('a');
+      link.download = 'quote-glass.png';
+      link.href = canvas.toDataURL();
+      link.click();
+      toast('Картинка сохранена');
+    });
+  }
+
+  async function shareCard() {
+    if (!current) { toast('Сначала получи цитату'); return; }
+    const text = `«${current.t}» — ${current.a}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Quote Glass', text });
+      } catch(e) {}
+    } else {
+      navigator.clipboard.writeText(text);
+      toast('Скопировано в буфер');
+    }
+  }
+
+  function saveToFav() {
+    if (!current) { toast('Сначала получи цитату'); return; }
+    const fav = JSON.parse(localStorage.getItem('fav') || '[]');
+    const entry = { t: current.t, a: current.a, cat: current.cat, id: Date.now() };
+    fav.unshift(entry);
+    localStorage.setItem('fav', JSON.stringify(fav.slice(0, 20)));
+    renderHistory();
+    toast('Добавлено в избранное');
+  }
+
+  function delFav(id) {
+    let fav = JSON.parse(localStorage.getItem('fav') || '[]');
+    fav = fav.filter(x => x.id !== id);
+    localStorage.setItem('fav', JSON.stringify(fav));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const fav = JSON.parse(localStorage.getItem('fav') || '[]');
+    const list = document.getElementById('historyList');
+    if (!fav.length) {
+      list.innerHTML = '<div class="empty">Пока пусто</div>';
+      return;
+    }
+    list.innerHTML = fav.map(x => `
+      <div class="history-item">
+        <span>«${x.t}» — ${x.a}</span>
+        <button class="del-btn" onclick="delFav(${x.id})">×</button>
+      </div>
+    `).join('');
+  }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  renderHistory();
+</script>
+</body>
+</html>
